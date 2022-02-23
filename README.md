@@ -7,12 +7,17 @@ Script that sorts the data from a test file into separate .csv files for each de
 Steps:
 
 1.- Open the command prompt (a terminal window on MACOS)
+
 2.- Check that you are using python3 and not python2
+
 Enter python -V
+
 If you are using python2, install the latest version and use it instead.
-2.- type python <absolute path to script>
+
+3.- type python <absolute path to script>
 Substitute the brackets with the absolute path to the main.py file.
-3.- Click enter
+  
+4.- Click enter
 
   
 # USING THE PROGRAM
