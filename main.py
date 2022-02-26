@@ -23,41 +23,51 @@ def read_config(config_file):
 
 
 def process_pressure_data(digits, time_sec, pressure_data):
+    """Organises multiplexed pressure data into pressure_data dictionary. The keys are IDs 180 and 181 and their values
+    are another dictionary. This second dictionary has two keys, time1 and time2, to contain the time the samples were
+    taken. It also has individual lists for every pressure sample."""
+
     pressures = [int("".join(digits[2:6]), 16), int("".join(digits[6:10]), 16), int("".join(digits[10:14]), 16)]
+
+    # If MUX = 0
     if digits[1] == "0":
         pressure_data["180"]["Time1"].append(time_sec)
         for i in range(3):
-            pressure_data["180"]["Pressure" + str(i+1)].append(pressures[i])
+            pressure_data["180"]["Pressure" + str(i + 1)].append(pressures[i])
 
+    # If MUX = 1. These samples contain information from both IDs
     elif digits[1] == "1":
         pressure_data["180"]["Time2"].append(time_sec)
         pressure_data["180"]["Pressure4"].append(pressures[0])
 
         pressure_data["181"]["Time1"].append(time_sec)
         for i in range(5, 7):
-            pressure_data["181"]["Pressure" + str(i)].append(pressures[i-4])
+            pressure_data["181"]["Pressure" + str(i)].append(pressures[i - 4])
 
+    # If MUX = 2
     else:
         pressure_data["181"]["Time2"].append(time_sec)
         for i in range(7, 9):
-            pressure_data["181"]["Pressure" + str(i)].append(pressures[i-7])
+            pressure_data["181"]["Pressure" + str(i)].append(pressures[i - 7])
 
     return pressure_data
 
 
 def create_pressure_files(filename, pressure_data):
-
-    # Time and pressure lists are equal in size
+    """Create csv files for the pressure data."""
+    # Time and pressure lists are equal in size.
     for device_id in pressure_data:
         with open("Pressure sensor" + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
             f.write("%s,%s\n" % ("Package ID", "Units"))
             f.write("%s,%s\n" % (device_id, "mBar"))
 
             if device_id == "180":
-                f.write("%s,%s,%s,%s,%s,%s\n" % ("Time (1-3)", "Pressure1", "Pressure2", "Pressure3", "Time (4)", "Pressure4"))
+                f.write("%s,%s,%s,%s,%s,%s\n" % (
+                    "Time (1-3)", "Pressure1", "Pressure2", "Pressure3", "Time (4)", "Pressure4"))
 
             else:
-                f.write("%s,%s,%s,%s,%s,%s\n" % ("Time (5-6)", "Pressure5", "Pressure6", "Time (7-8)", "Pressure7", "Pressure8"))
+                f.write("%s,%s,%s,%s,%s,%s\n" % (
+                    "Time (5-6)", "Pressure5", "Pressure6", "Time (7-8)", "Pressure7", "Pressure8"))
 
             time_val1 = pressure_data[device_id]["Time1"]
             time_val2 = pressure_data[device_id]["Time2"]
@@ -65,36 +75,47 @@ def create_pressure_files(filename, pressure_data):
             length_time1 = len(time_val1)
             length_time2 = len(time_val2)
 
+            # Within an ID, the number of samples for two given pressures might not be equal. Empty spaces are added
+            # to fill in the spaces. These spaces will only need to be added if
             for i in range(max(length_time1, length_time2)):
-                # Write time
+                # Write time1
                 if i < length_time1:
                     f.write("%s" % time_val1[i])
                 else:
                     f.write(",")
 
-                # Write pressure values
+                # If ID is 180 and not all values have been written for pressures corresponding to list time1
                 if device_id == "180" and i < length_time1:
+                    # Write pressure values for pressures 1-3
                     for j in range(3):
                         f.write(",%s" % pressure_data[device_id]["Pressure" + str(j + 1)][i])
 
+                # If ID is 181 and not all values have been written for time1
                 elif device_id == "181" and i < length_time1:
+                    # Write pressure values for pressures 5-6
                     for j in range(5, 7):
                         f.write(",%s" % pressure_data[device_id]["Pressure" + str(j)][i])
 
+                # If all values have been written
                 else:
                     for j in range(2):
                         f.write(",")
 
+                # Write time2
                 if i < length_time2:
                     f.write(",%s" % time_val2[i])
 
                 else:
                     f.write(",")
 
+                # If ID is 180 and not all values have been written for pressures corresponding to list time2
                 if device_id == "180" and i < length_time2:
+                    # Write pressure value for pressures 4
                     f.write(",%s" % pressure_data[device_id]["Pressure4"][i])
 
+                # If ID is 181 and not all values have been written for time2
                 elif device_id == "181" and i < length_time2:
+                    # Write pressure values for pressures 7 and 8
                     for j in range(7, 9):
                         f.write(",%s" % pressure_data[device_id]["Pressure" + str(j)][i])
 
@@ -105,13 +126,11 @@ def create_pressure_files(filename, pressure_data):
 
 
 def create_files(sample_dict, config, filename):
-    """Create a file for every ID"""
+    """Create a file for every ID in sample_dict"""
     for device_id in sample_dict:
         with open(config[device_id][0] + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
             f.write("%s,%s\n" % ("Package ID", "Units"))
             f.write("%s,%s\n" % (device_id, config[device_id][-1]))
-
-            # units = config[device_id][-1].split(" ")
 
             f.write("%s,%s\n" % ("Time", "Samples"))
             for i in range(len(sample_dict[device_id]["Time"])):
@@ -122,9 +141,11 @@ def create_files(sample_dict, config, filename):
 
 
 def read_file(filename, config_file):
-    """Reads a test file and returns a dictionary, where the keys are the IDs and the values are another dictionary. 
-    This second dictionary contains a list with all the samples and another list with the time those samples were 
-    taken. """
+    """Reads a test file and creates two dictionaries: pressure_data and data_dict.
+    pressure_data only contains aero pressure data, which is divided in IDs 180 and 181.
+    data_dict contains sample information on all other devices. The keys are the IDs and the values are another
+    dictionary. This second dictionary contains a list of lists -of all the samples divided into bytes- and another
+    list with the time those samples were taken."""
 
     try:  # check if file exists
         with open(filename, 'r') as f:
@@ -185,32 +206,28 @@ def read_file(filename, config_file):
                     # sample corresponding to a unit
                     sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
                     del sample_digits[:(int(distribution[i]) * 2)]
-                    print("unit", sample_unit)
                     sample_dec = int(sample_unit, 16)
-                    print(sample_dec)
                     sample_list = [sample_dec]
                     data_dict[device_id]["Samples"].append(sample_list)
 
     f.close()
-    print(data_dict)
-    create_files(data_dict, config_file, file_dir)
+
+    # Create csv files
+    create_files(data_dict, config_file, filename)
     create_pressure_files(filename, pressure_data)
 
 
 def main():
-    config_dir = r"/Users/marinasanjose/PycharmProjects/UGR-DATALOGGER-FILE-SORTING/CONFIG.CSV"
-    global file_dir
-    file_dir = r"/Users/marinasanjose/PycharmProjects/UGR-DATALOGGER-FILE-SORTING/TEST10.CSV"
-    # config_dir = Path(input("Please input the path of the config.csv file\n"))
-    # file_dir = input("Please input the path of the test file\n")
+    config_dir = Path(input("Please input the path of the config.csv file\n"))
+    file_dir = input("Please input the path of the test file\n")
 
     # Create a dictionary containing the information inside the config file
     config_dict = read_config(config_dir)
-    print(config_dict)
+    # CONFIG.CSV file does not contain information about IDs 2006 and 2007
     config_dict["2006"] = ["ECU", "8", "2222", "%i %i %i %i", "x10-Degrees x10-Degrees x10-Percentage milliVolts"]
     config_dict["2007"] = ["ECU", "6", "222", "%i %i %i", "Percentage x10-Percentage x10-Percentage"]
 
-    # Create a dictionary containing the information inside a test file
+    # Create csv files
     read_file(file_dir, config_dict)
 
 
