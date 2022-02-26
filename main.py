@@ -33,16 +33,97 @@ def process_pressure_data(digits, time_sec, pressure_data):
         pressure_data["180"]["Time2"].append(time_sec)
         pressure_data["180"]["Pressure4"].append(pressures[0])
 
-        pressure_data["181"]["Time2"].append(time_sec)
+        pressure_data["181"]["Time1"].append(time_sec)
         for i in range(5, 7):
             pressure_data["181"]["Pressure" + str(i)].append(pressures[i-4])
 
     else:
-        pressure_data["181"]["Time1"].append(time_sec)
+        pressure_data["181"]["Time2"].append(time_sec)
         for i in range(7, 9):
             pressure_data["181"]["Pressure" + str(i)].append(pressures[i-7])
 
+    # print("pressure", (pressure_data["181"]["Pressure8"]))
+    # print(len(pressure_data["180"]["Time2"]))
+    # print(len(pressure_data["181"]["Time1"]))
+    # print(len(pressure_data["181"]["Time2"]))
+
     return pressure_data
+
+
+def create_pressure_files(filename, pressure_data):
+
+    # Time and pressure lists are equal in size
+    for device_id in pressure_data:
+        with open("Pressure sensor" + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
+            f.write("%s,%s\n" % ("Package ID", "Units"))
+            f.write("%s,%s\n" % (device_id, "mBar"))
+
+            if device_id == "180":
+                f.write("%s,%s,%s,%s,%s,%s\n" % ("Time (1-3)", "Pressure1", "Pressure2", "Pressure3", "Time (4)", "Pressure4"))
+
+            else:
+                f.write("%s,%s,%s,%s,%s,%s\n" % ("Time (5-6)", "Pressure5", "Pressure6", "Time (7-8)", "Pressure7", "Pressure8"))
+
+            time_val1 = pressure_data[device_id]["Time1"]
+            time_val2 = pressure_data[device_id]["Time2"]
+
+            length_time1 = len(time_val1)
+            length_time2 = len(time_val2)
+
+            for i in range(max(length_time1, length_time2)):
+                # Write time
+                if i < length_time1:
+                    f.write("%s" % time_val1[i])
+                else:
+                    f.write(",")
+
+                # Write pressure values
+                if device_id == "180" and i < length_time1:
+                    for j in range(3):
+                        f.write(",%s" % pressure_data[device_id]["Pressure" + str(j + 1)][i])
+
+                elif device_id == "181" and i < length_time1:
+                    for j in range(5, 7):
+                        f.write(",%s" % pressure_data[device_id]["Pressure" + str(j)][i])
+
+                else:
+                    for j in range(2):
+                        f.write(",")
+
+                if i < length_time2:
+                    f.write(",%s" % time_val2[i])
+
+                else:
+                    f.write(",")
+
+                if device_id == "180" and i < length_time2:
+                    f.write(",%s" % pressure_data[device_id]["Pressure4"][i])
+
+                elif device_id == "181" and i < length_time2:
+                    for j in range(7, 9):
+                        f.write(",%s" % pressure_data[device_id]["Pressure" + str(j)][i])
+
+                else:
+                    f.write(",")
+
+                f.write("\n")
+
+
+def create_files(sample_dict, config, filename):
+    """Create a file for every ID"""
+    for device_id in sample_dict:
+        with open(config[device_id][0] + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
+            f.write("%s,%s\n" % ("Package ID", "Units"))
+            f.write("%s,%s\n" % (device_id, config[device_id][-1]))
+
+            # units = config[device_id][-1].split(" ")
+
+            f.write("%s,%s\n" % ("Time", "Samples"))
+            for i in range(len(sample_dict[device_id]["Time"])):
+                f.write("%s" % sample_dict[device_id]["Time"][i])
+                for j in range(len(sample_dict[device_id]["Samples"])):
+                    f.write(",%s" % sample_dict[device_id]["Samples"][j][i])
+                f.write("\n")
 
 
 def read_file(filename, config_file):
@@ -89,7 +170,6 @@ def read_file(filename, config_file):
                 if device_id == "585":
                     pressure_data = process_pressure_data(sample_digits, time_sec, pressure_data)
                     continue
-                    return data_dict
 
                 else:
                     print("ID", device_id, "unknown. A file for it could not be created.")
@@ -116,23 +196,7 @@ def read_file(filename, config_file):
     f.close()
     print(data_dict)
     create_files(data_dict, config_file, file_dir)
-
-
-def create_files(sample_dict, config, filename):
-    """Create a file for every ID"""
-    for device_id in sample_dict:
-        with open(config[device_id][0] + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
-            f.write("%s,%s\n" % ("Package ID", "Units"))
-            f.write("%s,%s\n" % (device_id, config[device_id][-1]))
-
-            # units = config[device_id][-1].split(" ")
-
-            f.write("%s,%s\n" % ("Time", "Samples"))
-            for i in range(len(sample_dict[device_id]["Time"])):
-                f.write("%s" % sample_dict[device_id]["Time"][i])
-                for j in range(len(sample_dict[device_id]["Samples"])):
-                    f.write(",%s" % sample_dict[device_id]["Samples"][j][i])
-                f.write("\n")
+    create_pressure_files(filename, pressure_data)
 
 
 def main():
