@@ -23,7 +23,7 @@ def read_config(config_file):
 
 
 def process_pressure_data(digits, time_sec, pressure_data):
-    pressures = ["".join(digits[2:6]), "".join(digits[6:10]), "".join(digits[10:14])]
+    pressures = [int("".join(digits[2:6]), 16), int("".join(digits[6:10]), 16), int("".join(digits[10:14]), 16)]
     if digits[1] == "0":
         pressure_data["180"]["Time1"].append(time_sec)
         for i in range(3):
@@ -41,11 +41,6 @@ def process_pressure_data(digits, time_sec, pressure_data):
         pressure_data["181"]["Time2"].append(time_sec)
         for i in range(7, 9):
             pressure_data["181"]["Pressure" + str(i)].append(pressures[i-7])
-
-    # print("pressure", (pressure_data["181"]["Pressure8"]))
-    # print(len(pressure_data["180"]["Time2"]))
-    # print(len(pressure_data["181"]["Time1"]))
-    # print(len(pressure_data["181"]["Time2"]))
 
     return pressure_data
 
@@ -150,7 +145,6 @@ def read_file(filename, config_file):
         "181": {"Time1": [], "Time2": [], "Pressure5": [], "Pressure6": [], "Pressure7": [], "Pressure8": []}
     }
     for row in new_data:
-
         stripped_line = row.strip().split(",")
         time_stamp = stripped_line[0].split(":")
 
@@ -181,8 +175,9 @@ def read_file(filename, config_file):
                 for i in range(len(distribution)):
                     # sample corresponding to a unit
                     sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
+                    sample_dec = int(sample_unit, 16)
                     del sample_digits[:(int(distribution[i]) * 2)]
-                    data_dict[device_id]["Samples"][i].append(sample_unit)
+                    data_dict[device_id]["Samples"][i].append(sample_dec)
 
             else:
                 data_dict[device_id] = {"Time": [time_sec], "Samples": []}
@@ -190,7 +185,10 @@ def read_file(filename, config_file):
                     # sample corresponding to a unit
                     sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
                     del sample_digits[:(int(distribution[i]) * 2)]
-                    sample_list = [sample_unit]
+                    print("unit", sample_unit)
+                    sample_dec = int(sample_unit, 16)
+                    print(sample_dec)
+                    sample_list = [sample_dec]
                     data_dict[device_id]["Samples"].append(sample_list)
 
     f.close()
@@ -214,9 +212,6 @@ def main():
 
     # Create a dictionary containing the information inside a test file
     read_file(file_dir, config_dict)
-
-    # Create csv files from the file dictionary
-    # create_files(file_dict, config_dict, file_dir)
 
 
 if __name__ == '__main__':
