@@ -22,6 +22,29 @@ def read_config(config_file):
     return data_struct
 
 
+def process_pressure_data(digits, time_sec, pressure_data):
+    pressures = ["".join(digits[2:6]), "".join(digits[6:10]), "".join(digits[10:14])]
+    if digits[1] == "0":
+        pressure_data["180"]["Time1"].append(time_sec)
+        for i in range(3):
+            pressure_data["180"]["Pressure" + str(i+1)].append(pressures[i])
+
+    elif digits[1] == "1":
+        pressure_data["180"]["Time2"].append(time_sec)
+        pressure_data["180"]["Pressure4"].append(pressures[0])
+
+        pressure_data["181"]["Time2"].append(time_sec)
+        for i in range(5, 7):
+            pressure_data["181"]["Pressure" + str(i)].append(pressures[i-4])
+
+    else:
+        pressure_data["181"]["Time1"].append(time_sec)
+        for i in range(7, 9):
+            pressure_data["181"]["Pressure" + str(i)].append(pressures[i-7])
+
+    return pressure_data
+
+
 def read_file(filename, config_file):
     """Reads a test file and returns a dictionary, where the keys are the IDs and the values are another dictionary. 
     This second dictionary contains a list with all the samples and another list with the time those samples were 
@@ -41,6 +64,10 @@ def read_file(filename, config_file):
         new_data.append(new_line)
 
     data_dict = {}
+    pressure_data = {
+        "180": {"Time1": [], "Time2": [], "Pressure1": [], "Pressure2": [], "Pressure3": [], "Pressure4": []},
+        "181": {"Time1": [], "Time2": [], "Pressure5": [], "Pressure6": [], "Pressure7": [], "Pressure8": []}
+    }
     for row in new_data:
 
         stripped_line = row.strip().split(",")
@@ -55,82 +82,40 @@ def read_file(filename, config_file):
             sample_digits = [str(a) for a in str(stripped_line[2])]
             device_id = stripped_line[1][2:]
 
-            # IDs 585, 2006 and 2007 are ignored for now
-            # if device_id not in config_file:
-            #    continue
-
             try:
                 distribution = [str(a) for a in str(config_file[device_id][2])]
 
             except KeyError:
                 if device_id == "585":
-                    distribution = ["2", "2", "2", "2"]
-                    device_id = "181"
-
-                    if sample_digits[1] == "0":
-                        device_id = "180"
-
-                    elif sample_digits[1] == "1":
-                        device_id = "180_181"
+                    pressure_data = process_pressure_data(sample_digits, time_sec, pressure_data)
+                    continue
+                    return data_dict
 
                 else:
                     print("ID", device_id, "unknown. A file for it could not be created.")
                     continue
 
-            # Process second CAN packet containing pressure data -- not yet working
-            if device_id == "180_181":
-                sample_unit = "".join(sample_digits[:(int(distribution[0]) * 2)])
-                del sample_digits[:(int(distribution[0]) * 2)]
+            if device_id in data_dict:
+                data_dict[device_id]["Time"].append(time_sec)
 
-                if "180" in data_dict:
-                    # Store first sample into ID 180
-                    data_dict["180"]["Time"].append(time_sec)
-                    data_dict["180"]["Samples"][0].append(sample_unit)
-
-                else:
-                    data_dict["180"] = {"Time": [time_sec], "Samples": []}
-                    sample_list = [sample_unit]
-                    data_dict["180"]["Samples"].append(sample_list)
-
-                if "181" in data_dict:
-                    data_dict["181"]["Time"].append(time_sec)
-
-                    for i in range(2):
-                        # sample corresponding to a unit
-                        sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
-                        del sample_digits[:(int(distribution[i]) * 2)]
-                        data_dict[device_id]["Samples"][i].append(sample_unit)
-
-                else:
-                    data_dict["181"] = {"Time": [time_sec], "Samples": []}
-                    for i in range(2):
-                        # sample corresponding to a unit
-                        sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
-                        del sample_digits[:(int(distribution[i]) * 2)]
-                        sample_list = [sample_unit]
-                        data_dict[device_id]["Samples"].append(sample_list)
+                for i in range(len(distribution)):
+                    # sample corresponding to a unit
+                    sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
+                    del sample_digits[:(int(distribution[i]) * 2)]
+                    data_dict[device_id]["Samples"][i].append(sample_unit)
 
             else:
-                if device_id in data_dict:
-                    data_dict[device_id]["Time"].append(time_sec)
-
-                    for i in range(len(distribution)):
-                        # sample corresponding to a unit
-                        sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
-                        del sample_digits[:(int(distribution[i]) * 2)]
-                        data_dict[device_id]["Samples"][i].append(sample_unit)
-
-                else:
-                    data_dict[device_id] = {"Time": [time_sec], "Samples": []}
-                    for i in range(len(distribution)):
-                        # sample corresponding to a unit
-                        sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
-                        del sample_digits[:(int(distribution[i]) * 2)]
-                        sample_list = [sample_unit]
-                        data_dict[device_id]["Samples"].append(sample_list)
+                data_dict[device_id] = {"Time": [time_sec], "Samples": []}
+                for i in range(len(distribution)):
+                    # sample corresponding to a unit
+                    sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
+                    del sample_digits[:(int(distribution[i]) * 2)]
+                    sample_list = [sample_unit]
+                    data_dict[device_id]["Samples"].append(sample_list)
 
     f.close()
-    return data_dict
+    print(data_dict)
+    create_files(data_dict, config_file, file_dir)
 
 
 def create_files(sample_dict, config, filename):
@@ -151,10 +136,11 @@ def create_files(sample_dict, config, filename):
 
 
 def main():
-    # config_dir = r"/Users/marinasanjose/PycharmProjects/file_sorting/CONFIG.CSV"
-    # file_dir = r"/Users/marinasanjose/PycharmProjects/file_sorting/TEST19.CSV"
-    config_dir = Path(input("Please input the path of the config.csv file\n"))
-    file_dir = input("Please input the path of the test file\n")
+    config_dir = r"/Users/marinasanjose/PycharmProjects/UGR-DATALOGGER-FILE-SORTING/CONFIG.CSV"
+    global file_dir
+    file_dir = r"/Users/marinasanjose/PycharmProjects/UGR-DATALOGGER-FILE-SORTING/TEST10.CSV"
+    # config_dir = Path(input("Please input the path of the config.csv file\n"))
+    # file_dir = input("Please input the path of the test file\n")
 
     # Create a dictionary containing the information inside the config file
     config_dict = read_config(config_dir)
@@ -163,10 +149,10 @@ def main():
     config_dict["2007"] = ["ECU", "6", "222", "%i %i %i", "Percentage x10-Percentage x10-Percentage"]
 
     # Create a dictionary containing the information inside a test file
-    file_dict = read_file(file_dir, config_dict)
+    read_file(file_dir, config_dict)
 
     # Create csv files from the file dictionary
-    create_files(file_dict, config_dict, file_dir)
+    # create_files(file_dict, config_dict, file_dir)
 
 
 if __name__ == '__main__':
