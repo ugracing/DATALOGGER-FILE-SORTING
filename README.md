@@ -14,7 +14,8 @@ Enter python -V
 
 If you are using python2, install the latest version and use it instead.
 
-3.- type python <absolute path to script>
+3.- type python \<absolute path to script\>
+
 Substitute the brackets with the absolute path to the main.py file.
   
 4.- Click enter
