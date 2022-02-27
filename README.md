@@ -14,7 +14,7 @@ Enter python -V
 
 If you are using python2, install the latest version and use it instead.
 
-3.- Enter the following command. Substitute the brackets with the absolute path to the main.py file.
+3.- Enter the following command. Substitute the brackets with the absolute path to the test_file_sorting.py file.
 
 python \<absolute path to script\>
 
