@@ -21,7 +21,7 @@ python \<absolute path to script\>
 
 # USING THE PROGRAM
 
-Run the main.py file.
+Run the test_file_sorting.py file.
 
 Once the script is executed, a prompt should appear in the command line to enter the path of the config.csv file.
 
