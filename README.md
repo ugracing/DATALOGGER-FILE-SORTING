@@ -29,4 +29,4 @@ Please download the file, write the absolute path of the file in the terminal an
 
 Then, another prompt will appear asking for the absolute path of a test csv file. Enter the path and click enter.
 
-After entering it and clicking enter, the required files will be created and added to the same directory as the main.py file.
+After entering it and clicking enter, the required files will be created and added to the same directory as the test_file_sorting.py file.
