@@ -140,6 +140,21 @@ def create_files(sample_dict, config, filename):
                 f.write("\n")
 
 
+def update_data_dictionary(data_dict, device_id, sample_digits, distribution, first_time):
+    """Add given sample to the data dictionary."""
+    for i in range(len(distribution)):
+        # Make a list inside "Samples" that will hold the measurement
+        if first_time:
+            data_dict[device_id]["Samples"].append([])
+
+        sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
+        del sample_digits[:(int(distribution[i]) * 2)]
+        measurement = int(sample_unit, 16)
+        data_dict[device_id]["Samples"][i].append(measurement)
+
+    return data_dict
+
+
 def read_file(filename, config_file):
     """Reads a test file and creates two dictionaries: pressure_data and data_dict.
     pressure_data only contains aero pressure data, which is divided in IDs 180 and 181.
@@ -171,16 +186,13 @@ def read_file(filename, config_file):
 
         # read only lines with data samples
         if len(stripped_line) == 3 and len(time_stamp) == 3:
-
             time_sec = time_stamp[2]
-
             # sample number should be separated into digits
             sample_digits = [str(a) for a in str(stripped_line[2])]
             device_id = stripped_line[1][2:]
 
             try:
                 distribution = [str(a) for a in str(config_file[device_id][2])]
-
             except KeyError:
                 if device_id == "585":
                     pressure_data = process_pressure_data(sample_digits, time_sec, pressure_data)
@@ -191,25 +203,14 @@ def read_file(filename, config_file):
                     continue
 
             if device_id in data_dict:
-                data_dict[device_id]["Time"].append(time_sec)
-
-                for i in range(len(distribution)):
-                    # sample corresponding to a unit
-                    sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
-                    sample_dec = int(sample_unit, 16)
-                    del sample_digits[:(int(distribution[i]) * 2)]
-                    data_dict[device_id]["Samples"][i].append(sample_dec)
+                first_time = False
 
             else:
-                data_dict[device_id] = {"Time": [time_sec], "Samples": []}
-                for i in range(len(distribution)):
-                    # sample corresponding to a unit
-                    sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
-                    del sample_digits[:(int(distribution[i]) * 2)]
-                    sample_dec = int(sample_unit, 16)
-                    sample_list = [sample_dec]
-                    data_dict[device_id]["Samples"].append(sample_list)
+                data_dict[device_id] = {"Time": [], "Samples": []}
+                first_time = True
 
+            data_dict[device_id]["Time"].append(time_sec)
+            data_dict = update_data_dictionary(data_dict, device_id, sample_digits, distribution, first_time)
     f.close()
 
     # Create csv files
