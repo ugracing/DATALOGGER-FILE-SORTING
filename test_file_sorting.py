@@ -22,6 +22,14 @@ def read_config(config_file):
     return data_struct
 
 
+def add_pressure(device_id, pressure1, pressure2, pressure_data, pressures):
+    """Adds pressure values to given pressure_data dictionary."""
+    for i in range(pressure1, pressure2 + 1):
+        pressure_data[device_id]["Pressure" + str(i)].append(pressures[i - 1])
+
+    return pressure_data
+
+
 def process_pressure_data(digits, time_sec, pressure_data):
     """Organises multiplexed pressure data into pressure_data dictionary. The keys are IDs 180 and 181 and their values
     are another dictionary. This second dictionary has two keys, time1 and time2, to contain the time the samples were
@@ -33,29 +41,26 @@ def process_pressure_data(digits, time_sec, pressure_data):
     # If MUX = 0
     if mux_value == "0":
         pressure_data["180"]["Time1"].append(time_sec)
-        # Pressures 1, 2 and 3
-        for i in range(3):
-            pressure_data["180"]["Pressure" + str(i + 1)].append(pressures[i])
+        # Add values for pressures 1, 2 and 3
+        pressure_data = add_pressure("180", 1, 3, pressure_data, pressures)
 
     # If MUX = 1. These samples contain information from both IDs
     elif mux_value == "1":
         # For ID 180
         pressure_data["180"]["Time2"].append(time_sec)
-        # Pressure 4
+        # Add value for pressure 4
         pressure_data["180"]["Pressure4"].append(pressures[0])
 
         # For ID 181
         pressure_data["181"]["Time1"].append(time_sec)
-        # Pressures 5 and 6
-        for i in range(5, 7):
-            pressure_data["181"]["Pressure" + str(i)].append(pressures[i - 4])
+        # Add values for pressures 5 and 6
+        pressure_data = add_pressure("181", 5, 6, pressure_data, pressures)
 
     # If MUX = 2
     else:
         pressure_data["181"]["Time2"].append(time_sec)
-        # Pressures 7 and 8
-        for i in range(7, 9):
-            pressure_data["181"]["Pressure" + str(i)].append(pressures[i - 7])
+        # Add values for pressures 7 and 8
+        pressure_data = add_pressure("181", 7, 8, pressure_data, pressures)
 
     return pressure_data
 
