@@ -1,5 +1,4 @@
 import sys
-import datetime
 from pathlib import Path
 
 
@@ -29,25 +28,32 @@ def process_pressure_data(digits, time_sec, pressure_data):
     taken. It also has individual lists for every pressure sample."""
 
     pressures = [int("".join(digits[2:6]), 16), int("".join(digits[6:10]), 16), int("".join(digits[10:14]), 16)]
+    mux_value = digits[1]
 
     # If MUX = 0
-    if digits[1] == "0":
+    if mux_value == "0":
         pressure_data["180"]["Time1"].append(time_sec)
+        # Pressures 1, 2 and 3
         for i in range(3):
             pressure_data["180"]["Pressure" + str(i + 1)].append(pressures[i])
 
     # If MUX = 1. These samples contain information from both IDs
-    elif digits[1] == "1":
+    elif mux_value == "1":
+        # For ID 180
         pressure_data["180"]["Time2"].append(time_sec)
+        # Pressure 4
         pressure_data["180"]["Pressure4"].append(pressures[0])
 
+        # For ID 181
         pressure_data["181"]["Time1"].append(time_sec)
+        # Pressures 5 and 6
         for i in range(5, 7):
             pressure_data["181"]["Pressure" + str(i)].append(pressures[i - 4])
 
     # If MUX = 2
     else:
         pressure_data["181"]["Time2"].append(time_sec)
+        # Pressures 7 and 8
         for i in range(7, 9):
             pressure_data["181"]["Pressure" + str(i)].append(pressures[i - 7])
 
@@ -130,10 +136,12 @@ def create_files(sample_dict, config, filename):
     """Create a file for every ID in sample_dict"""
     for device_id in sample_dict:
         with open(config[device_id][0] + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
+            # Write headers
             f.write("%s,%s,%s\n" % ("Package ID", "Measurement units", "Time unit"))
             f.write("%s,%s,%s\n" % (device_id, config[device_id][-1], "Seconds"))
-
             f.write("%s,%s\n" % ("Time", "Samples"))
+
+            # Write values
             for i in range(len(sample_dict[device_id]["Time"])):
                 f.write("%s" % sample_dict[device_id]["Time"][i])
                 for j in range(len(sample_dict[device_id]["Samples"])):
@@ -155,6 +163,7 @@ def update_data_dictionary(data_dict, device_id, sample_digits, distribution, fi
         if 2000 <= int(device_id) <= 2007:
             sample_unit = sample_unit[2:] + sample_unit[:2]
 
+        # Convert to decimal
         measurement = int(sample_unit, 16)
         data_dict[device_id]["Samples"][i].append(measurement)
 
@@ -200,7 +209,7 @@ def read_file(filename, config_file):
         # read only lines with data samples
         if len(stripped_line) == 3 and len(time) == 3:
             timestamp = stripped_line[0].split(" ")[1]
-            # Convert time into seconds
+            # Convert time to seconds
             time_sec = convert_to_sec(timestamp)
 
             # sample number should be separated into digits
@@ -208,6 +217,7 @@ def read_file(filename, config_file):
             device_id = stripped_line[1][2:]
 
             try:
+                # Distribution from the config file
                 distribution = [str(a) for a in str(config_file[device_id][2])]
             except KeyError:
                 if device_id == "585":
@@ -215,6 +225,7 @@ def read_file(filename, config_file):
                     continue
 
                 else:
+                    # If an ID is unknown, we still want to create the other files.
                     print("ID", device_id, "unknown. A file for it could not be created.")
                     continue
 
@@ -240,6 +251,7 @@ def main():
 
     # Create a dictionary containing the information inside the config file
     config_dict = read_config(config_dir)
+
     # CONFIG.CSV file does not contain information about IDs 2006 and 2007
     config_dict["2006"] = ["ECU", "8", "2222", "%i %i %i %i", "x10-Degrees x10-Degrees x10-Percentage milliVolts"]
     config_dict["2007"] = ["ECU", "6", "222", "%i %i %i", "Percentage x10-Percentage x10-Percentage"]
