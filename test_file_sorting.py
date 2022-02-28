@@ -25,7 +25,7 @@ def read_config(config_file):
 def add_pressure(device_id, pressure1, pressure2, pressure_data, pressures):
     """Adds pressure values to given pressure_data dictionary."""
     for i in range(pressure1, pressure2 + 1):
-        pressure_data[device_id]["Pressure" + str(i)].append(pressures[i - 1])
+        pressure_data[device_id]["Pressure" + str(i)].append(pressures[i - pressure1-1])
 
     return pressure_data
 
@@ -50,6 +50,7 @@ def process_pressure_data(digits, time_sec, pressure_data):
         pressure_data["180"]["Time2"].append(time_sec)
         # Add value for pressure 4
         pressure_data["180"]["Pressure4"].append(pressures[0])
+        del pressures[0]
 
         # For ID 181
         pressure_data["181"]["Time1"].append(time_sec)
