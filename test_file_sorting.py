@@ -1,3 +1,4 @@
+import math
 import sys
 from pathlib import Path
 
@@ -58,8 +59,8 @@ def create_pressure_files(filename, pressure_data):
     # Time and pressure lists are equal in size.
     for device_id in pressure_data:
         with open("Pressure sensor" + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
-            f.write("%s,%s\n" % ("Package ID", "Units"))
-            f.write("%s,%s\n" % (device_id, "mBar"))
+            f.write("%s,%s,%s\n" % ("Package ID", "Pressure units", "Time units"))
+            f.write("%s,%s,%s\n" % (device_id, "mBar", "Seconds"))
 
             if device_id == "180":
                 f.write("%s,%s,%s,%s,%s,%s\n" % (
@@ -129,8 +130,8 @@ def create_files(sample_dict, config, filename):
     """Create a file for every ID in sample_dict"""
     for device_id in sample_dict:
         with open(config[device_id][0] + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
-            f.write("%s,%s\n" % ("Package ID", "Units"))
-            f.write("%s,%s\n" % (device_id, config[device_id][-1]))
+            f.write("%s,%s,%s\n" % ("Package ID", "Measurement units", "Time units"))
+            f.write("%s,%s,%s\n" % (device_id, config[device_id][-1], "Seconds"))
 
             f.write("%s,%s\n" % ("Time", "Samples"))
             for i in range(len(sample_dict[device_id]["Time"])):
@@ -149,6 +150,11 @@ def update_data_dictionary(data_dict, device_id, sample_digits, distribution, fi
 
         sample_unit = "".join(sample_digits[:(int(distribution[i]) * 2)])
         del sample_digits[:(int(distribution[i]) * 2)]
+
+        # If the measurement is from an ECU packet, the digits need to be flipped
+        if 2000 <= int(device_id) <= 2007:
+            sample_unit = sample_unit[2:] + sample_unit[:2]
+
         measurement = int(sample_unit, 16)
         data_dict[device_id]["Samples"][i].append(measurement)
 
