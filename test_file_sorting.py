@@ -1,5 +1,5 @@
-import math
 import sys
+import datetime
 from pathlib import Path
 
 
@@ -130,7 +130,7 @@ def create_files(sample_dict, config, filename):
     """Create a file for every ID in sample_dict"""
     for device_id in sample_dict:
         with open(config[device_id][0] + "_" + device_id + "_" + filename.split("/")[-1], 'w') as f:
-            f.write("%s,%s,%s\n" % ("Package ID", "Measurement units", "Time units"))
+            f.write("%s,%s,%s\n" % ("Package ID", "Measurement units", "Time unit"))
             f.write("%s,%s,%s\n" % (device_id, config[device_id][-1], "Seconds"))
 
             f.write("%s,%s\n" % ("Time", "Samples"))
@@ -161,6 +161,13 @@ def update_data_dictionary(data_dict, device_id, sample_digits, distribution, fi
     return data_dict
 
 
+def convert_to_sec(time):
+    """Converts a string representing a time with the format H:M:S to seconds and returns it."""
+    time_list = time.split(":")
+    seconds = float(time_list[2]) + float(time_list[0]) * 3600 + float(time_list[1]) * 60
+    return str(seconds)
+
+
 def read_file(filename, config_file):
     """Reads a test file and creates two dictionaries: pressure_data and data_dict.
     pressure_data only contains aero pressure data, which is divided in IDs 180 and 181.
@@ -188,11 +195,14 @@ def read_file(filename, config_file):
     }
     for row in new_data:
         stripped_line = row.strip().split(",")
-        time_stamp = stripped_line[0].split(":")
+        time = stripped_line[0].split(":")
 
         # read only lines with data samples
-        if len(stripped_line) == 3 and len(time_stamp) == 3:
-            time_sec = time_stamp[2]
+        if len(stripped_line) == 3 and len(time) == 3:
+            timestamp = stripped_line[0].split(" ")[1]
+            # Convert time into seconds
+            time_sec = convert_to_sec(timestamp)
+
             # sample number should be separated into digits
             sample_digits = [str(a) for a in str(stripped_line[2])]
             device_id = stripped_line[1][2:]
